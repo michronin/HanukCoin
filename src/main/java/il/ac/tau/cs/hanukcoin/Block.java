@@ -132,7 +132,7 @@ public class Block {
             return BlockError.SAME_WALLET_PREV;  // don't allow two consequent blocks with same wallet
         }
         if (!HanukCoinUtils.ArraysPartEquals(8, data, 8, prevBlock.data, 24)) {
-            return BlockError.NO_PREV_SIG;  // check prevSig field is indeed siganute of prev block
+            return BlockError.NO_PREV_SIG;  // check prevSig field is indeed signature of prev block
         }
         return checkSignature();
     }
