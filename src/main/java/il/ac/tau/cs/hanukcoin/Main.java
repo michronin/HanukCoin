@@ -58,8 +58,7 @@ public class Main {
 
             // calculating the signature
             byte[] actualCurrentSignature = current.calcSignature();
-            System.out.println("hello");
-            System.out.println(Arrays.toString(actualCurrentSignature));
+
 
 
 
