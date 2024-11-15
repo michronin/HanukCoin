@@ -26,6 +26,7 @@ public class Block {
     public static final int BLOCK_SZ = 36;
     public enum BlockError {OK, BAD_SERIAL_NO, SAME_WALLET_PREV, NO_PREV_SIG, SIG_NO_ZEROS, SIG_BAD}
     protected byte[] data;
+    protected byte[] sig;
     public int getSerialNumber() {
         return HanukCoinUtils.intFromBytes(data, 0);
     }
@@ -50,6 +51,7 @@ public class Block {
     }
     public static Block create(int serialNumber, int walletNumber, byte[] prevSig8, byte[] puzzle8, byte[] sig12) {
         Block b = createNoSig(serialNumber, walletNumber, prevSig8);
+        b.sig = sig12;
         System.arraycopy(sig12, 0, b.data, 24, 12);
         System.arraycopy(puzzle8, 0, b.data, 16, 8);
         return b;
@@ -78,6 +80,7 @@ public class Block {
      * @param sig
      */
     public void setSignaturePart(byte[] sig) {
+        this.sig = sig;
         System.arraycopy(sig, 0, data, 24, 12);
     }
 

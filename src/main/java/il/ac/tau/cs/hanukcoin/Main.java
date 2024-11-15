@@ -58,6 +58,10 @@ public class Main {
 
             // calculating the signature
             byte[] actualCurrentSignature = current.calcSignature();
+            if (current.sig == null || current.sig.equals(actualCurrentSignature)) {
+                System.out.println("hlo");
+                return false;
+            }
 
 
 
