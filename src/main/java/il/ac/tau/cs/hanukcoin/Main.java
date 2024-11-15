@@ -51,7 +51,7 @@ public class Main {
             }
             // checking if first block is genesis block
             else {
-                if (!(current.binDump().equals(HanukCoinUtils.createBlock0forTestStage().binDump()) )) {
+                if (!(current.equals(HanukCoinUtils.createBlock0forTestStage()))) {
                     return false;
                 }
             }

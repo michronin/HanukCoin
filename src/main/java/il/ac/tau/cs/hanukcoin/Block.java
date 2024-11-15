@@ -15,6 +15,8 @@ import java.io.DataInputStream;
 import java.io.IOException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.Arrays;
+import java.util.Objects;
 
 /**
  * Class that represnts one block in the block chane.
@@ -155,6 +157,20 @@ public class Block {
         return dump;
     }
 
+    @Override
+    public boolean equals(Object o) {
+        if (o.getClass() == this.getClass()) {
+            return (this.binDump().equals(((Block) o).binDump()));
+        }
 
+        if (o == null || getClass() != o.getClass()) return false;
+        Block block = (Block) o;
+        return Objects.deepEquals(data, block.data);
+    }
+
+    @Override
+    public int hashCode() {
+        return Arrays.hashCode(data);
+    }
 }
 
