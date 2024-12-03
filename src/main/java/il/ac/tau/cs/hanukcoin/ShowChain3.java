@@ -9,7 +9,7 @@ import java.util.List;
 import java.util.concurrent.SynchronousQueue;
 
 /**
- * A program to choe current status of HanukCoin netwםrk and block-chain
+ * A program to show current status of HanukCoin network and blockchain
  * This program accepts multiple HOST:PORT strings on the command line and access all of them
  * The program uses threads to open concurrent TCP calls.
  * We use SynchronousQueue to coordinate main thread and TCP
@@ -115,7 +115,7 @@ public class ShowChain3 {
 
 
         private void sendRequest(int cmd, DataOutputStream dos) throws IOException {
-            // QUIZ: Currently this mothods sends an empty request.
+            // QUIZ: Currently this methods sends an empty request.
             //   in your server - you will need to access the node list and block chain
             //   How would you synchronize?
             // How do you prevent slow stream from locking you?
@@ -168,7 +168,7 @@ public class ShowChain3 {
                 printMessage(pm.receivedNodes, pm.receivedBlocks);
                 break;
             } else {
-                // another object type - maybe excpetion
+                // another object type - maybe exception
                 println("Result from thread: %s", obj.toString());
             }
         }
@@ -185,18 +185,18 @@ public class ShowChain3 {
         }
     }
 
-    public static void main(String argv[]) {
+    public static void main(String[] args) {
         ArrayList<HostPort> hostPort = new ArrayList<>();
-        if (argv.length == 0) {
+        if (args.length == 0) {
             println("ERROR - please provide HOST:PORT");
             return;
         }
-        for (String hp : argv) {
+        for (String hp : args) {
             if (!hp.contains(":")){
                 println("ERROR - please provide HOST:PORT");
                 return;
             }
-            String[] parts = argv[0].split(":");
+            String[] parts = args[0].split(":");
             String addr = parts[0];
             int port = Integer.parseInt(parts[1]);
             hostPort.add(new HostPort(addr, port));

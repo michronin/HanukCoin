@@ -4,6 +4,7 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.Socket;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -17,17 +18,93 @@ import java.util.List;
 public class ShowChain2 {
     public static final int BEEF_BEEF = 0xbeefBeef;
     public static final int DEAD_DEAD = 0xdeadDead;
-    public static void log(String fmt, Object... args) {
-        println(fmt, args);
-    }
-    public static void println(String fmt, Object... args) {
-        System.out.format(fmt + "\n", args);
-    }
     // note - receivedNodes, receivedBlocks
-    //   these members are accessed from mutliple threads.
+    //   these members are accessed from multiple threads.
     // need to synchronize
     public List<NodeInfo> receivedNodes;
     public List<Block> receivedBlocks;
+
+    public static void log(String fmt, Object... args) {
+        println(fmt, args);
+    }
+
+    public static void println(String fmt, Object... args) {
+        System.out.format(fmt + "\n", args);
+    }
+
+    public static void main(String[] args) {
+        ArrayList<HostPort> hostPort = new ArrayList<>();
+        if (args.length == 0) {
+            println("ERROR - please provide HOST:PORT");
+            return;
+        }
+        for (String hp : args) {
+            if (!hp.contains(":")) {
+                println("ERROR - please provide HOST:PORT");
+                return;
+            }
+            String[] parts = args[0].split(":");
+            String addr = parts[0];
+            int port = Integer.parseInt(parts[1]);
+            hostPort.add(new HostPort(addr, port));
+
+        }
+        ShowChain2 app = new ShowChain2();
+        try {
+            app.sendReceive(hostPort);
+        } catch (InterruptedException e) {
+            //end program
+        }
+
+    }
+
+    public synchronized void setSharedVariables(List<NodeInfo> receivedNodes, List<Block> receivedBlocks) {
+        this.receivedNodes = receivedNodes;
+        this.receivedBlocks = receivedBlocks;
+    }
+
+    private void printMessage(List<NodeInfo> receivedNodes, List<Block> receivedBlocks) {
+        println("==== Nodes ====");
+        for (NodeInfo ni : receivedNodes) {
+            println("%20s\t%s:%s\t%d", ni.name, ni.host, ni.port, ni.lastSeenTS);
+        }
+        println("==== Blocks ====");
+        for (Block b : receivedBlocks) {
+            println("%5d\t0x%08x\t%s", b.getSerialNumber(), b.getWalletNumber(), b.binDump().replace("\n", "  "));
+        }
+    }
+
+    public void sendReceive(List<HostPort> hosts) throws InterruptedException {
+        for (var hp : hosts) {
+            final String host = hp.host();
+            final int port = hp.port();
+            new Thread(() -> sendReceive(host, port)).start();
+        }
+        while (true) {
+            // QUIZ: does this loop always end?
+            synchronized (this) {
+                // QUIZ : why do we do a synchronized block here and not synchronized over all the method sendReceive()
+                if (receivedBlocks != null && receivedNodes != null) {
+                    // QUIZ - can only one of them be null?
+                    printMessage(receivedNodes, receivedBlocks);
+                    break;
+                }
+            }
+            println("Sleeping...");
+            Thread.sleep(200);
+        }
+    }
+
+    public void sendReceive(String host, int port) {
+        try {
+            log("INFO - Sending request message to %s:%d", host, port);
+            Socket soc = new Socket(host, port);
+            ClientConnection connection = new ClientConnection(soc);
+            connection.sendReceive();
+        } catch (IOException e) {
+            log("WARN - open socket exception connecting to %s:%d: %s", host, port, e.toString());
+        }
+    }
 
     static class NodeInfo {
         // FRANJI: Discussion - public members - pro/cons. What is POJO
@@ -39,10 +116,7 @@ public class ShowChain2 {
         //  last time connection was attempted, if this node is new ot alive etc.
 
         public static String readLenStr(DataInputStream dis) throws IOException {
-            byte strLen = dis.readByte();
-            byte[] strBytes = new byte[strLen];
-            dis.readFully(strBytes);
-            return new String(strBytes, "utf-8");
+            return ShowChain.NodeInfo.readLenStr(dis);
         }
 
         public static NodeInfo readFrom(DataInputStream dis) throws IOException {
@@ -52,16 +126,15 @@ public class ShowChain2 {
             // QUIZ: Here is the bug Itai found - how did he find that
             //    I need to used dis.readUnsignedShort(); and not dis.readShort();
             n.port = dis.readUnsignedShort();
-            n.lastSeenTS =dis.readInt();
+            n.lastSeenTS = dis.readInt();
             // TODO(students): update extra fields
             return n;
         }
     }
 
-
     class ClientConnection {
-        private DataInputStream dataInput;
-        private DataOutputStream dataOutput;
+        private final DataInputStream dataInput;
+        private final DataOutputStream dataOutput;
 
         public ClientConnection(Socket connectionSocket) {
             try {
@@ -69,7 +142,7 @@ public class ShowChain2 {
                 dataOutput = new DataOutputStream(connectionSocket.getOutputStream());
 
             } catch (IOException e) {
-               throw new RuntimeException("FATAL = cannot create data streams", e);
+                throw new RuntimeException("FATAL = cannot create data streams", e);
             }
         }
 
@@ -83,7 +156,7 @@ public class ShowChain2 {
             }
         }
 
-        public void parseMessage(DataInputStream dataInput) throws IOException  {
+        public void parseMessage(DataInputStream dataInput) throws IOException {
             int cmd = dataInput.readInt(); // skip command field
 
             int beefBeef = dataInput.readInt();
@@ -92,7 +165,7 @@ public class ShowChain2 {
             }
             int nodesCount = dataInput.readInt();
             // FRANJI: discussion - create a new list in memory or update global list?
-            ArrayList<NodeInfo> receivedNodes =  new ArrayList<>();
+            ArrayList<NodeInfo> receivedNodes = new ArrayList<>();
             for (int ni = 0; ni < nodesCount; ni++) {
                 NodeInfo newInfo = NodeInfo.readFrom(dataInput);
                 receivedNodes.add(newInfo);
@@ -103,7 +176,7 @@ public class ShowChain2 {
             }
             int blockCount = dataInput.readInt();
             // FRANJI: discussion - create a new list in memory or update global list?
-            ArrayList<Block> receivedBlocks =  new ArrayList<>();
+            ArrayList<Block> receivedBlocks = new ArrayList<>();
             for (int bi = 0; bi < blockCount; bi++) {
                 Block newBlock = Block.readFrom(dataInput);
                 receivedBlocks.add(newBlock);
@@ -128,79 +201,6 @@ public class ShowChain2 {
             dos.writeInt(blockChain_size);
             // TODO(students): sendRequest data of blocks
         }
-    }
-
-    public synchronized void setSharedVariables(List<NodeInfo> receivedNodes, List<Block> receivedBlocks) {
-        this.receivedNodes = receivedNodes;
-        this.receivedBlocks = receivedBlocks;
-    }
-
-    private void printMessage(List<NodeInfo> receivedNodes, List<Block> receivedBlocks) {
-        println("==== Nodes ====");
-        for (NodeInfo ni : receivedNodes) {
-            println("%20s\t%s:%s\t%d",ni.name,  ni.host, ni.port, ni.lastSeenTS);
-        }
-        println("==== Blocks ====");
-        for (Block b : receivedBlocks) {
-            println("%5d\t0x%08x\t%s", b.getSerialNumber(), b.getWalletNumber(), b.binDump().replace("\n", "  "));
-        }
-    }
-
-    public void sendReceive(List<HostPort> hosts) throws InterruptedException {
-        for (var hp : hosts) {
-            final String host = hp.host();
-            final int port = hp.port();
-            new Thread(() -> sendReceive(host, port)).start();
-        }
-        while(true) {
-            // QUIZ: does this loop always end?
-            synchronized (this) {
-                // QUIZ : why do we do a synchronized block here and not synchronized over all the method sendReceive()
-                if (receivedBlocks != null && receivedNodes != null) {
-                    // QUIZ - can only one of them be null?
-                    printMessage(receivedNodes, receivedBlocks);
-                    break;
-                }
-            }
-            println("Sleeping...");
-            Thread.sleep(200);
-        }
-    }
-    public void sendReceive(String host, int port){
-        try {
-            log("INFO - Sending request message to %s:%d", host, port);
-            Socket soc = new Socket(host, port);
-            ClientConnection connection = new ClientConnection(soc);
-            connection.sendReceive();
-        } catch (IOException e) {
-            log("WARN - open socket exception connecting to %s:%d: %s", host, port, e.toString());
-        }
-    }
-
-    public static void main(String argv[]) {
-        ArrayList<HostPort> hostPort = new ArrayList<>();
-        if (argv.length == 0) {
-            println("ERROR - please provide HOST:PORT");
-            return;
-        }
-        for (String hp : argv) {
-            if (!hp.contains(":")){
-                println("ERROR - please provide HOST:PORT");
-                return;
-            }
-            String[] parts = argv[0].split(":");
-            String addr = parts[0];
-            int port = Integer.parseInt(parts[1]);
-            hostPort.add(new HostPort(addr, port));
-
-        }
-        ShowChain2 app = new ShowChain2();
-        try {
-            app.sendReceive(hostPort);
-        } catch (InterruptedException e) {
-            //end program
-        }
-
     }
 }
 

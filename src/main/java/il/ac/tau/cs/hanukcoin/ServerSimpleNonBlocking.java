@@ -9,12 +9,14 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.stream.Collectors;
 
+import static java.lang.String.valueOf;
+
 
 /**
  * Simple request-response server that uses non-blocking TCP API
  */
 class ServerSimpleNonBlocking {
-    protected static int accepPort = 8080;
+    protected static int acceptPort = 8080;
 
     class ClientConnection {
         private SocketChannel connectionSocket;
@@ -91,8 +93,8 @@ class ServerSimpleNonBlocking {
                             return;
                         }
                     }
-                    System.out.println(String.format("Http header: %s", line));
-                    if (line.length() == 0) {
+                    System.out.printf("Http header: %s%n", line);
+                    if (line.isEmpty()) {
                         break;  // in HTTP empty line ends the header part
                     }
                 }
@@ -108,7 +110,7 @@ class ServerSimpleNonBlocking {
                     "</body></html>\r\n", this.toString());
             int contentLen = html.length();
             HashMap<String, String> header = new HashMap<>();
-            header.put("Content-Length", new Integer(contentLen).toString());
+            header.put("Content-Length", valueOf(contentLen));
             header.put("Content-Type", "text/html");
             header.put("Connection", "Closed");
             String responseLine = "HTTP/1.1 200 OK\r\n";
@@ -129,9 +131,9 @@ class ServerSimpleNonBlocking {
         try {
             acceptSocket = ServerSocketChannel.open();
             acceptSocket.configureBlocking(false);  // non-blocking to allow loop to handle other things
-            acceptSocket.socket().bind(new InetSocketAddress(accepPort));
+            acceptSocket.socket().bind(new InetSocketAddress(acceptPort));
         } catch (IOException e) {
-            System.out.println(String.format("ERROR accepting at port %d", accepPort));
+            System.out.printf("ERROR accepting at port %d%n", acceptPort);
             return;
         }
 
@@ -143,7 +145,7 @@ class ServerSimpleNonBlocking {
                     connections.add(new ClientConnection(connectionSocket));
                 }
             } catch (IOException e) {
-                System.out.println(String.format("ERROR accept:\n  %s", e.toString()));
+                System.out.printf("ERROR accept:\n  %s%n", e.toString());
             }
             handleConnections();
             Thread.sleep(50);  // prevent tight loop
@@ -163,10 +165,10 @@ class ServerSimpleNonBlocking {
     }
 
 
-    public static void main(String argv[]) {
-        if (argv.length > 0) {
+    public static void main(String[] args) {
+        if (args.length > 0) {
             // allow changing accept port
-            accepPort = Integer.parseInt(argv[0]);
+            acceptPort = Integer.parseInt(args[0]);
         }
         ServerSimpleNonBlocking server = new ServerSimpleNonBlocking();
         try {

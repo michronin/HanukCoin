@@ -23,8 +23,8 @@ class ServerSimpleThreads {
         private DataOutputStream dataOutput;
         private boolean isIncomming = false;
         Socket connectionSocket;
-        public ClientConnection(Socket connectionSocket, boolean incomming) {
-            isIncomming = incomming;
+        public ClientConnection(Socket connectionSocket, boolean incoming) {
+            isIncomming = incoming;
             this.connectionSocket = connectionSocket;
             try {
                 dataInput = new DataInputStream(connectionSocket.getInputStream());
@@ -41,7 +41,7 @@ class ServerSimpleThreads {
                     // Note - in here we are in:
                     // class ServerSimpleThread (parent)
                     // class ClientConnection (dynamic inner class)
-                    // class annonymous_runnable (dynamic inner child of ClientConnection)
+                    // class anonymous_runnable (dynamic inner child of ClientConnection)
                     // Here I call my parent instance of ClientConnection
                     ClientConnection.this.connectionThread();
                 }
@@ -60,13 +60,13 @@ class ServerSimpleThreads {
                             return;
                         }
                     }
-                    System.out.println(String.format("Http header: %s", line));
-                    if (line.length() == 0) {
+                    System.out.printf("Http header: %s%n", line);
+                    if (line.isEmpty()) {
                         break;
                     }
                 }
                 sendHtml();
-            } catch (IOException e) {
+            } catch (IOException ignored) {
             } finally {
                 try {
                     connectionSocket.close();
@@ -82,7 +82,7 @@ class ServerSimpleThreads {
                     "</body></html>\r\n", this.toString());
             int contentLen = html.length();
             HashMap<String, String> header = new HashMap<>();
-            header.put("Content-Length", new Integer(contentLen).toString());
+            header.put("Content-Length", String.valueOf(contentLen));
             header.put("Content-Type", "text/html");
             header.put("Connection", "Closed");
             String responseLine = "HTTP/1.1 200 OK\r\n";
@@ -103,7 +103,7 @@ class ServerSimpleThreads {
             acceptSocket = ServerSocketChannel.open();
             acceptSocket.socket().bind(new InetSocketAddress(accepPort));
         } catch (IOException e) {
-            System.out.println(String.format("ERROR accepting at port %d", accepPort));
+            System.out.printf("ERROR accepting at port %d%n", accepPort);
             return;
         }
 
@@ -115,17 +115,17 @@ class ServerSimpleThreads {
                     new ClientConnection(connectionSocket.socket(), true).runInThread();
                 }
             } catch (IOException e) {
-                System.out.println(String.format("ERROR accept:\n  %s", e.toString()));
+                System.out.printf("ERROR accept:\n  %s%n", e.toString());
                 continue;
             }
         }
     }
 
 
-    public static void main(String argv[]) {
-        if (argv.length > 0) {
+    public static void main(String[] args) {
+        if (args.length > 0) {
             // allow changing accept port
-            accepPort = Integer.parseInt(argv[0]);
+            accepPort = Integer.parseInt(args[0]);
         }
         ServerSimpleThreads server = new ServerSimpleThreads();
         try {
