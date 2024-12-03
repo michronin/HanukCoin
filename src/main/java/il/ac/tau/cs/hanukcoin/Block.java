@@ -11,10 +11,10 @@ package il.ac.tau.cs.hanukcoin;
      */
 
 
-import java.io.DataInputStream;
-import java.io.IOException;
+import java.io.*;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.Arrays;
 
 /**
  * Class that represnts one block in the block chane.
@@ -60,6 +60,13 @@ public class Block {
         return b;
     }
 
+    public void writeTo(DataOutputStream dos) throws IOException {
+        dos.write(getBytes(), 0, BLOCK_SZ);
+    }
+
+    public boolean equals(Block other) {
+        return Arrays.equals(other.getBytes(), this.getBytes());
+    }
 
     /**
      * put 8 bytes dat into puzzle field
@@ -71,6 +78,14 @@ public class Block {
         HanukCoinUtils.intIntoBytes(data, 20, (int)(longPuzzle & 0xFFFFFFFF));
     }
 
+    /**
+     * compare this.puzzle - other.puzzle
+     * @param other
+     * @return 1 if this puzzle bigger, 0 if equal, -1 if this smaller
+     */
+    public int comparePuzzle(Block other) {
+        return HanukCoinUtils.ArraysPartCompare(8, this.getBytes(), 16, other.getBytes(), 16);
+    }
     /**
      * given a block signature - take first 12 bytes of it and put into the signature field of this block
      * @param sig
@@ -155,6 +170,11 @@ public class Block {
         return dump;
     }
 
+    public Block clone() {
+        Block b = new Block();
+        b.data = Arrays.copyOf(this.getBytes(), BLOCK_SZ);
+        return b;
+    }
 
 }
 

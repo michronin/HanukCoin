@@ -1,7 +1,5 @@
 package il.ac.tau.cs.hanukcoin;
 
-import javafx.util.Pair;
-
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -154,10 +152,10 @@ public class ShowChain3 {
         }
     }
 
-    public void sendReceive(List<Pair<String, Integer>> hosts) throws InterruptedException {
-        for (Pair<String, Integer> hp : hosts) {
-            final String host = hp.getKey();
-            final int port = hp.getValue();
+    public void sendReceive(List<HostPort> hosts) throws InterruptedException {
+        for (var hp : hosts) {
+            final String host = hp.host();
+            final int port = hp.port();
             new Thread(() -> sendReceive(host, port)).start();
         }
         while(true) {
@@ -188,7 +186,7 @@ public class ShowChain3 {
     }
 
     public static void main(String argv[]) {
-        ArrayList<Pair<String, Integer>> hostPort = new ArrayList<>();
+        ArrayList<HostPort> hostPort = new ArrayList<>();
         if (argv.length == 0) {
             println("ERROR - please provide HOST:PORT");
             return;
@@ -201,7 +199,7 @@ public class ShowChain3 {
             String[] parts = argv[0].split(":");
             String addr = parts[0];
             int port = Integer.parseInt(parts[1]);
-            hostPort.add(new Pair<>(addr, port));
+            hostPort.add(new HostPort(addr, port));
 
         }
         ShowChain3 app = new ShowChain3();
