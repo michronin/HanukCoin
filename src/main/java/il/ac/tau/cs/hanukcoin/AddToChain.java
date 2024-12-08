@@ -11,8 +11,8 @@ import java.util.List;
 public class AddToChain {
     public static final int BEEF_BEEF = 0xbeefBeef;
     public static final int DEAD_DEAD = 0xdeadDead;
-    private static List<NodeInfo> activeNodes = new ArrayList<>();
-    private static List<Block> activeBlocks = new ArrayList<>();
+    private static final List<NodeInfo> nodeList = new ArrayList<>();
+    private static final List<Block> blockList = new ArrayList<>();
 
 
     public static void log(String fmt, Object... args) {
@@ -34,15 +34,27 @@ public class AddToChain {
         }
     }
 
-    public static void main(String[] argv) {
-        if (argv.length != 1 || !argv[0].contains(":")) {
+    public static void main(String[] args) {
+        if (args.length != 1 || !args[0].contains(":")) {
             println("ERROR - please provide HOST:PORT");
             return;
         }
-        String[] parts = argv[0].split(":");
+        String[] parts = args[0].split(":");
         String addr = parts[0];
         int port = Integer.parseInt(parts[1]);
+
+        // send an "empty" message in order to get the nodes and blocks in the server
         sendReceive(addr, port);
+
+        // add another block for testing purposes
+        NodeInfo n = new NodeInfo();
+        n.name = "testing";
+        n.host = "testtest";
+        n.port = 8080;
+        n.lastSeenTS = (int) (System.currentTimeMillis() / 1000);
+        nodeList.add(n);
+
+        // send the new node to the server
         sendReceive(addr, port);
     }
 
@@ -90,17 +102,15 @@ public class AddToChain {
 
         public void sendReceive() {
             try {
-                addNodes(1, dataOutput);
-                parseMessage(dataInput);
-                System.out.println(activeNodes);
-                System.out.println(activeBlocks);
+                sendRequest(1, dataOutput);
+                processResponse(dataInput);
             } catch (IOException e) {
                 throw new RuntimeException("send/recieve error", e);
             }
         }
 
 
-        public void parseMessage(DataInputStream dataInput) throws IOException {
+        public void processResponse(DataInputStream dataInput) throws IOException {
             int cmd = dataInput.readInt(); // skip command field
 
             int beefBeef = dataInput.readInt();
@@ -109,10 +119,10 @@ public class AddToChain {
             }
             int nodesCount = dataInput.readInt();
             // FRANJI: discussion - create a new list in memory or update global list?
-            activeNodes.clear();
+            nodeList.clear();
             for (int ni = 0; ni < nodesCount; ni++) {
                 NodeInfo newInfo = NodeInfo.readFrom(dataInput);
-                activeNodes.add(newInfo);
+                nodeList.add(newInfo);
             }
             int deadDead = dataInput.readInt();
             if (deadDead != DEAD_DEAD) {
@@ -120,12 +130,12 @@ public class AddToChain {
             }
             int blockCount = dataInput.readInt();
             // FRANJI: discussion - create a new list in memory or update global list?
-            activeBlocks.clear();
+            blockList.clear();
             for (int bi = 0; bi < blockCount; bi++) {
                 Block newBlock = Block.readFrom(dataInput);
-                activeBlocks.add(newBlock);
+                blockList.add(newBlock);
             }
-            System.out.println("Parsed successfully");
+            log("INFO - Successfully received data");
 //            printMessage();
         }
 
@@ -141,56 +151,49 @@ public class AddToChain {
         }
 
         private void sendRequest(int cmd, DataOutputStream dos) throws IOException {
+            // send cmd and BEEF_BEEF
             dos.writeInt(cmd);
             dos.writeInt(BEEF_BEEF);
-            int activeNodes = 0;
-            // TODO(students): calculate number of active (not new) nodes
-            dos.writeInt(activeNodes);
-            // TODO(students): sendRequest data of active (not new) nodes
+
+            // send nodes data
+            sendNodes(dos);
+
+            // write DEAD_DEAD
             dos.writeInt(DEAD_DEAD);
-            int blockChain_size = 0;
-            dos.writeInt(blockChain_size);
-            // TODO(students): sendRequest data of blocks
+
+            // send blocks data
+            sendBlocks(dos);
         }
 
-        private void addNodes(int cmd, DataOutputStream dos) throws IOException {
-            if (activeNodes.isEmpty()) {
-                sendRequest(cmd, dos);
-            } else {
-                dos.writeInt(cmd);
-                dos.writeInt(BEEF_BEEF);
-                int activeNodesCount = activeNodes.size()+1;
-                // TODO(students): calculate number of active (not new) nodes
-                dos.writeInt(activeNodesCount);
-                // TODO(students): sendRequest data of active (not new) nodes
-                NodeInfo n = new NodeInfo();
-                n.name = "test";
-                n.host = "testhost";
-                n.port = 8080;
-                n.lastSeenTS = (int) (System.currentTimeMillis() / 1000);
-                activeNodes.add(n);
-                for (NodeInfo node : activeNodes) {
-                    dos.writeByte(node.name.length());
-                    dos.write(node.name.getBytes());
-                    dos.writeByte(node.host.length());
-                    dos.write(node.host.getBytes());
-                    dos.writeShort(node.port);
-                    dos.writeInt((int) (System.currentTimeMillis() / 1000));
+        private void sendBlocks(DataOutputStream dos) throws IOException {
+            // calculate the blockchain size
+            int blockChainSize = blockList.size();
+            dos.writeInt(blockChainSize);
 
-                }
+            // send data of blocks
+            for (Block block : blockList) {
+                dos.writeInt(block.getSerialNumber());
+                dos.writeInt(block.getSerialNumber());
+                dos.writeLong(block.getPrevSig());
+                dos.writeLong(block.getPuzzle());
+                dos.writeLong(block.getStartSig());
+                dos.writeInt(block.getFinishSig());
+            }
+        }
 
-                dos.writeInt(DEAD_DEAD);
-                int blockChain_size = activeBlocks.size();
-                dos.writeInt(activeBlocks.size());
-                // TODO(students): sendRequest data of blocks
-                for (Block block : activeBlocks) {
-                    dos.writeInt(block.getSerialNumber());
-                    dos.writeInt(block.getSerialNumber());
-                    dos.writeLong(block.getPrevSig());
-                    dos.writeLong(block.getPuzzle());
-                    dos.writeLong(block.getStartSig());
-                    dos.writeInt(block.getFinishSig());
-                }
+        private void sendNodes(DataOutputStream dos) throws IOException {
+            // calculate number of nodes
+            int activeNodesCount = nodeList.size();
+            dos.writeInt(activeNodesCount);
+
+            // send the data of all the nodes
+            for (NodeInfo node : nodeList) {
+                dos.writeByte(node.name.length());
+                dos.write(node.name.getBytes());
+                dos.writeByte(node.host.length());
+                dos.write(node.host.getBytes());
+                dos.writeShort(node.port);
+                dos.writeInt(node.lastSeenTS);
             }
         }
     }
