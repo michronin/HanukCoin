@@ -54,6 +54,18 @@ public class HanukCoinUtils {
         return b1 | b2 | b3 | b4;
     }
 
+    public static long longFromBytes(byte[] data, int offset) {
+        long b1 = ((long) data[offset] & 0xFF) << 56;
+        long b2 = ((long) data[offset + 1] & 0xFF) << 48;
+        long b3 = ((long) data[offset + 2] & 0xFF) << 40;
+        long b4 = ((long) data[offset + 3] & 0xFF) << 32;
+        long b5 = ((long) data[offset + 4] & 0xFF) << 24;
+        long b6 = ((long) data[offset + 5] & 0xFF) << 16;
+        long b7 = ((long) data[offset + 6] & 0xFF) << 8;
+        long b8 = ((long) data[offset + 7] & 0xFF);
+        return b1 | b2 | b3 | b4 | b5 | b6 | b7 | b8;
+    }
+
     /**
      * put value in big-endian format into data[offser]
      * @param data - bytes array

@@ -64,6 +64,23 @@ public class Block {
         return HanukCoinUtils.intFromBytes(data, 4);
     }
 
+    public long getPrevSig() {
+        return HanukCoinUtils.longFromBytes(data, 8);
+    }
+
+    public long getPuzzle() {
+        return HanukCoinUtils.longFromBytes(data, 16);
+    }
+
+    public long getStartSig() {
+        return HanukCoinUtils.longFromBytes(data, 24);
+    }
+
+    public int getFinishSig() {
+        return HanukCoinUtils.intFromBytes(data, 32);
+    }
+
+
     public void writeTo(DataOutputStream dos) throws IOException {
         dos.write(getBytes(), 0, BLOCK_SZ);
     }
